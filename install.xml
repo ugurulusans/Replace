@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>AI Ürün Güncelleme</name>
+    <code>ai_product_updater</code>
+    <version>1.0.2</version>
+    <author>Jules AI Assistant</author>
+    <link></link>
+
+    <file path="admin/controller/common/column_left.php">
+        <operation error="log">
+            <search><![CDATA[// Marketplace]]></search>
+            <add position="before"><![CDATA[
+            if ($this->user->hasPermission('access', 'extension/module/ai_updater')) {
+                $this->load->language('extension/module/ai_updater', 'aimenu');
+                $marketplace[] = array(
+                    'name'     => $this->language->get('aimenu_text_ai_updater_menu'),
+                    'href'     => $this->url->link('extension/module/ai_updater', 'user_token=' . $this->session->data['user_token'], true),
+                    'children' => array()
+                );
+            }
+            ]]></add>
+        </operation>
+    </file>
+</modification>

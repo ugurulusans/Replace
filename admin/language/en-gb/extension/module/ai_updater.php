@@ -1,6 +1,9 @@
 <?php
 // Heading
-$_['heading_title']    = 'AI Product Updater';
+$_['heading_title']    = 'AI Ürün Güncelleme'; // Updated Name
+
+// Menu Text (added for OCMOD menu integration)
+$_['text_ai_updater_menu'] = 'AI Ürün Güncelleme';
 
 // Text
 $_['text_extension']   = 'Extensions';
