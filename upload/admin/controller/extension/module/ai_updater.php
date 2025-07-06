@@ -7,7 +7,8 @@ class ControllerExtensionModuleAiUpdater extends Controller {
         $this->document->setTitle($this->language->get('heading_title'));
         $this->load->model('setting/setting');
 
-        if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
+        // OC3'te ayarlar genellikle doğrudan POST ile gelir ve index'te işlenir.
+        if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validateForm()) { // validateForm ayar formu için
             $this->model_setting_setting->editSetting('module_ai_updater', $this->request->post);
             $this->session->data['success'] = $this->language->get('text_success');
             $this->response->redirect($this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true));
@@ -27,8 +28,14 @@ class ControllerExtensionModuleAiUpdater extends Controller {
             'href' => $this->url->link('extension/module/ai_updater', 'user_token=' . $this->session->data['user_token'], true)
         );
 
-        $data['action'] = $this->url->link('extension/module/ai_updater', 'user_token=' . $this->session->data['user_token'], true);
+        // Ayar formu için action URL'i (kendisine post edecek)
+        $data['action_settings'] = $this->url->link('extension/module/ai_updater', 'user_token=' . $this->session->data['user_token'], true);
+        // Ürün güncelleme AJAX isteği için URL
+        $data['action_update_products'] = $this->url->link('extension/module/ai_updater/updateProducts', 'user_token=' . $this->session->data['user_token'], true);
+
         $data['cancel'] = $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true);
+        $data['user_token'] = $this->session->data['user_token'];
+
 
         if (isset($this->request->post['module_ai_updater_status'])) {
             $data['module_ai_updater_status'] = $this->request->post['module_ai_updater_status'];
@@ -36,7 +43,6 @@ class ControllerExtensionModuleAiUpdater extends Controller {
             $data['module_ai_updater_status'] = $this->config->get('module_ai_updater_status');
         }
 
-        // Placeholder for Openrouter API Key
         if (isset($this->request->post['module_ai_updater_api_key'])) {
             $data['module_ai_updater_api_key'] = $this->request->post['module_ai_updater_api_key'];
         } else {
@@ -49,7 +55,6 @@ class ControllerExtensionModuleAiUpdater extends Controller {
         } else {
             $data['error_warning'] = '';
         }
-
         if (isset($this->error['api_key'])) {
             $data['error_api_key'] = $this->error['api_key'];
         } else {
@@ -63,10 +68,57 @@ class ControllerExtensionModuleAiUpdater extends Controller {
         $this->response->setOutput($this->load->view('extension/module/ai_updater', $data));
     }
 
+    // OC3 için ayar formu validasyonu
+    protected function validateForm() {
+        if (!$this->user->hasPermission('modify', 'extension/module/ai_updater')) {
+            $this->error['warning'] = $this->language->get('error_permission');
+        }
+
+        if (isset($this->request->post['module_ai_updater_status']) && $this->request->post['module_ai_updater_status']) {
+            if (empty(trim($this->request->post['module_ai_updater_api_key']))) {
+                $this->error['api_key'] = $this->language->get('error_api_key_required');
+            }
+        }
+        return !$this->error;
+    }
+
+    // Ürünleri AJAX ile listelemek için metod
+    public function loadProducts() {
+        $this->load->language('extension/module/ai_updater');
+        $json = array('products' => array());
+
+        if (isset($this->request->get['filter_name'])) {
+            $filter_name = $this->request->get['filter_name'];
+        } else {
+            $filter_name = null;
+        }
+
+        $this->load->model('extension/module/ai_updater'); // Modelimizi yüklüyoruz
+
+        $filter_data = array(
+            'filter_name' => $filter_name,
+            'start'       => 0,
+            'limit'       => 50 // Örnek bir limit, gerekirse artırılabilir veya ayarlanabilir yapılabilir
+        );
+
+        $results = $this->model_extension_module_ai_updater->getProducts($filter_data);
+
+        foreach ($results as $result) {
+            $json['products'][] = array(
+                'product_id' => $result['product_id'],
+                'name'       => strip_tags(html_entity_decode($result['name'], ENT_QUOTES, 'UTF-8'))
+            );
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+
     public function updateProducts() {
         $this->load->language('extension/module/ai_updater');
         $this->load->model('extension/module/ai_updater');
-        $this->load->model('catalog/product'); // OpenCart'ın kendi ürün modelini yüklüyoruz
+        $this->load->model('catalog/product');
 
         $json = array();
 
@@ -74,12 +126,10 @@ class ControllerExtensionModuleAiUpdater extends Controller {
             if (!$this->user->hasPermission('modify', 'extension/module/ai_updater')) {
                 $json['error'] = $this->language->get('error_permission');
             } else {
-                // Veritabanı yedeği al
                 $this->model_extension_module_ai_updater->backupDatabase();
                 $this->log->write('AI Updater: Database backup created.');
 
                 if (isset($this->request->post['selected_products']) && isset($this->request->post['fields_to_update'])) {
-                    $selected_products = $this->request->post['selected_products'];
                     $fields_to_update = $this->request->post['fields_to_update'];
                     $manual_description = isset($this->request->post['manual_description']) ? $this->request->post['manual_description'] : '';
                     $openrouter_api_key = $this->config->get('module_ai_updater_api_key');
@@ -87,18 +137,9 @@ class ControllerExtensionModuleAiUpdater extends Controller {
                     if (empty($openrouter_api_key)) {
                         $json['error'] = $this->language->get('error_api_key_missing');
                     } else {
-                        $this->load->library('openrouter');
+                        $this->load->library('openrouter'); // Global kütüphane olarak yüklenecek
                         $openrouter = new OpenRouter($openrouter_api_key);
-                        // Tavsiye edilen header'ları ekleyelim (OpenRouter dokümantasyonundan)
-                        // Bu değerler config'den veya otomatik olarak alınabilir.
-                        // $openrouter->setReferer($this->config->get('config_url'));
-                        // $openrouter->setAppTitle($this->language->get('heading_title'));
 
-
-                        $updated_count = 0; // Bu artık tek ürün için 0 ya da 1 olacak
-                        // $errors_per_product = array(); // Artık tek ürün işlendiği için bu yapıya gerek yok, doğrudan $json['error'] kullanılacak
-
-                        // JavaScript tarafı artık selected_products dizisini tek elemanlı gönderecek
                         if (empty($this->request->post['selected_products']) || !is_array($this->request->post['selected_products']) || count($this->request->post['selected_products']) !== 1) {
                             $json['error'] = 'Invalid product selection for single update.';
                         } else {
@@ -108,7 +149,7 @@ class ControllerExtensionModuleAiUpdater extends Controller {
 
                             if ($product_info) {
                                 $current_description = '';
-                                $current_name = $product_info['name']; // Mevcut ürün adı
+                                $current_name = $product_info['name'];
                                 $current_meta_title = '';
                                 $current_meta_description = '';
                                 $current_meta_keyword = '';
@@ -150,18 +191,14 @@ class ControllerExtensionModuleAiUpdater extends Controller {
                                 if (isset($api_response_raw['error'])) {
                                     $json['error'] = 'API Error for product ID ' . $product_id . ': ' . $api_response_raw['error'];
                                     $this->log->write('AI Updater: ' . $json['error']);
-                                    // `continue` yerine burada işlemi sonlandırıp json response'u göndereceğiz.
                                 } else {
-                                    $ai_content = '';
-                                    if (isset($api_response_raw['choices'][0]['message']['content'])) {
-                                        $ai_content = $api_response_raw['choices'][0]['message']['content'];
-                                    } else {
-                                        $json['error'] = 'API response for product ID ' . $product_id . ' does not contain expected content structure.';
+                                    $ai_content = $api_response_raw['choices'][0]['message']['content'] ?? '';
+                                    if (empty($ai_content)) {
+                                         $json['error'] = 'API response for product ID ' . $product_id . ' does not contain expected content structure.';
                                         $this->log->write('AI Updater: ' . $json['error'] . ' Response: ' . json_encode($api_response_raw));
-                                        // `continue` yerine işlemi sonlandır.
                                     }
 
-                                    if (!isset($json['error'])) { // Eğer bir önceki blokta hata set edilmediyse devam et
+                                    if (!isset($json['error'])) {
                                         $parsed_data = $openrouter->parseProductUpdateResponse($ai_content, $fields_to_update);
                                         $this->log->write('AI Updater: Parsed data for product ID ' . $product_id . ': ' . json_encode($parsed_data));
 
@@ -169,11 +206,10 @@ class ControllerExtensionModuleAiUpdater extends Controller {
                                             $json['error'] = 'Parsing Error for product ID ' . $product_id . ': ' . $parsed_data['parsing_error'];
                                             $this->log->write('AI Updater: ' . $json['error']);
                                         } else if (!empty($parsed_data)) {
-                                            $update_product_data = array();
-                                            $update_product_description_data = array();
+                                            $update_product_data = ['product_description' => []]; // Initialize
 
                                             foreach ($product_descriptions as $language_id => $description_data) {
-                                                $update_product_description_data[$language_id] = $description_data;
+                                                $update_product_description_data[$language_id] = $description_data; // Mevcut verileri koru
                                                 if (in_array('name', $fields_to_update) && isset($parsed_data['name'])) {
                                                     $update_product_description_data[$language_id]['name'] = $parsed_data['name'];
                                                 }
@@ -192,15 +228,8 @@ class ControllerExtensionModuleAiUpdater extends Controller {
                                             }
                                             $update_product_data['product_description'] = $update_product_description_data;
 
-                                            if (!empty($update_product_data['product_description'])) {
-                                                $this->model_extension_module_ai_updater->updateProduct($product_id, $update_product_data);
-                                                $this->log->write('AI Updater: Product ID ' . $product_id . ' updated successfully in DB. Parsed Data: ' . json_encode($parsed_data));
-                                                // Dil dosyasına eklenecek yeni bir string: text_product_updated_success_single
-                                                $json['success'] = sprintf($this->language->get('text_product_updated_success_single'), $product_id);
-                                            } else {
-                                                $json['warning'] = 'No data to update for product ID ' . $product_id . ' after parsing.';
-                                                $this->log->write('AI Updater: ' . $json['warning'] . ' Parsed Data: ' . json_encode($parsed_data));
-                                            }
+                                            $this->model_extension_module_ai_updater->updateProduct($product_id, $update_product_data);
+                                            $json['success'] = sprintf($this->language->get('text_product_updated_success_single'), $product_id);
                                         } else {
                                             $json['warning'] = 'AI did not return usable data for product ID ' . $product_id . '. Check logs.';
                                             $this->log->write('AI Updater: ' . $json['warning'] . ' AI Content: ' . $ai_content);
@@ -226,12 +255,7 @@ class ControllerExtensionModuleAiUpdater extends Controller {
 
     public function install() {
         $this->load->model('setting/setting');
-        $this->model_setting_setting->editSetting('module_ai_updater', ['module_ai_updater_status' => 0]); // Default disabled
-
-        // OpenCart's Log class creates log files if they don't exist.
-        // So, manual creation is not typically needed.
-        // new Log('ai_updater_api.log');
-        // new Log('ai_updater_data.log');
+        $this->model_setting_setting->editSetting('module_ai_updater', ['module_ai_updater_status' => 0]);
     }
 
     public function uninstall() {
@@ -239,25 +263,6 @@ class ControllerExtensionModuleAiUpdater extends Controller {
         $this->model_setting_setting->deleteSetting('module_ai_updater');
     }
 
-    protected function validate() {
-        if (!$this->user->hasPermission('modify', 'extension/module/ai_updater')) {
-            $this->error['warning'] = $this->language->get('error_permission');
-        }
-
-        // API Key için validasyon
-        if (isset($this->request->post['module_ai_updater_status']) && $this->request->post['module_ai_updater_status']) { // Sadece modül aktifken API key zorunlu olsun
-            if (empty(trim($this->request->post['module_ai_updater_api_key']))) {
-                $this->error['api_key'] = $this->language->get('error_api_key_required');
-            }
-        }
-
-        return !$this->error;
-    }
-
-    // Loglama fonksiyonu (OpenCart'ın kendi log sistemi kullanılacak)
-    // public function log($message, $type = 'info') {
-    //     $file = ($type == 'api') ? DIR_LOGS . 'ai_updater_api.log' : DIR_LOGS . 'ai_updater_data.log';
-    //     $log = new Log(basename($file));
-    //     $log->write($message);
-    // }
+    // validate metodu validateForm olarak değiştirildi ve sadece ayar formu için kullanılacak.
+    // updateProducts içindeki izin kontrolü orada kalacak.
 }

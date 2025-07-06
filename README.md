@@ -14,31 +14,35 @@ The AI Product Updater is an OpenCart extension designed to automatically update
 *   **Live Log Output:** Displays individual status (success, error, warning) for each product in real-time during the update process.
 *   **Detailed Logging:** Logs API interactions and update statuses for troubleshooting (check OpenCart's system error logs for entries prefixed with "AI Updater:").
 *   **SEO URL Generation:** Automatically generates/updates SEO-friendly URLs when product names are changed by the AI.
+*   **OCMOD Installer Compatible:** Can be installed via OpenCart's Extension Installer.
 
 ## Requirements
 
-*   OpenCart 3.0.x (Tested on 3.0.3.6)
+*   OpenCart 3.0.x (e.g., 3.0.3.6, 3.0.3.8)
 *   An active Openrouter.ai API Key.
 *   PHP cURL extension enabled on your server.
 
 ## Installation
 
-1.  **Download:** Obtain the extension files. These will typically be in a compressed format (e.g., `.zip`).
-2.  **Extract:** Extract the downloaded archive. You should see an `upload/` directory (or similar, containing `admin/`, `system/` etc.).
-3.  **Upload Files:**
-    *   Using an FTP client (like FileZilla) or your hosting control panel's File Manager, upload the contents of the `upload/` directory to the root directory of your OpenCart installation.
-    *   Ensure that you merge the directories, do not overwrite your existing `admin` or `system` folders entirely, just the new files within them.
+1.  **Download:** Obtain the `AI_Urun_Guncelleme_vX.X.X.ocmod.zip` file.
+2.  **Upload via Extension Installer:**
+    *   In your OpenCart Admin Panel, navigate to **Extensions > Installer**.
+    *   Click the "Upload" button and select the downloaded `.ocmod.zip` file.
+3.  **Refresh Modifications:**
+    *   Go to **Extensions > Modifications**.
+    *   Click the blue "Refresh" button (top right).
 4.  **Permissions:**
-    *   Go to **System > Users > User Groups** in your OpenCart admin panel.
+    *   Go to **System > Users > User Groups**.
     *   Select your user group (e.g., "Administrator") and click "Edit".
-    *   Under "Access Permission" and "Modify Permission", find and check the box for `extension/module/ai_updater`.
+    *   Under "Access Permission" and "Modify Permission", find and check the boxes for:
+        *   `extension/module/ai_updater`
     *   Click "Save".
 5.  **Install Module:**
     *   Go to **Extensions > Modules**.
-    *   Find "AI Product Updater" in the list of modules.
+    *   Find "AI Ürün Güncelleme" (or "AI Product Updater" depending on your default language settings for the admin) in the list.
     *   Click the green "Install" button ( `+` icon) next to it.
 6.  **Edit Module Settings:**
-    *   After installation, click the blue "Edit" button (pencil icon) next to "AI Product Updater".
+    *   After installation, click the blue "Edit" button (pencil icon) next to "AI Ürün Güncelleme".
 
 ## Configuration
 
@@ -50,60 +54,37 @@ Once you access the module's edit page:
 2.  **Openrouter API Key:**
     *   Enter your valid Openrouter.ai API Key into the designated field. This is **required** for the module to work if the status is "Enabled".
 3.  **Save Settings:**
-    *   Click the "Save Settings" button (usually a floppy disk icon or labeled "Save") at the top right or within the settings form.
+    *   Click the "Save Settings" button.
 
 ## Usage
 
 After installation and configuration:
 
-1.  **Navigate:** Go to the "AI Product Updater" module settings page (Extensions > Modules > AI Product Updater > Edit).
+1.  **Navigate:** Go to the "AI Ürün Güncelleme" module settings page (Extensions > Modules > AI Ürün Güncelleme > Edit or via the left-hand menu link if the OCMOD modification for the menu is active).
 2.  **Product Update Tool Section:**
-    *   **Fields to Update:** Select one or more product fields you want the AI to generate new content for (e.g., Product Name, Description, Meta Title). Use Ctrl-Click (or Cmd-Click on Mac) to select multiple fields.
-    *   **Manual Instructions for AI (Optional):** Provide any specific guidelines, keywords, tone, or context you want the AI to consider. For example: "Focus on eco-friendly aspects", "Use a persuasive tone for a young audience", "Target keywords: sustainable, organic".
-    *   **Select Products:**
-        *   Use the "Filter by Product Name" field to search for products.
-        *   Check the boxes next to the products you wish to update.
-3.  **Start Update:**
-    *   Click the "**Update Selected Products with AI**" button (usually a play icon) located at the top right of the page.
+    *   **Fields to Update:** Select one or more product fields.
+    *   **Manual Instructions for AI (Optional):** Provide specific guidelines.
+    *   **Select Products:** Filter and select products.
+3.  **Start Update:** Click the "**Update Selected Products with AI**" button.
 4.  **Monitor Progress:**
-    *   A progress bar will appear, showing the overall status of the update process (e.g., "Processing product X / Y").
-    *   Below the progress bar, a **live log output** area will display real-time status updates for each product being processed. This includes:
-        *   Confirmation that data is being sent to the AI for a product.
-        *   Specific success, warning, or error messages returned for that individual product.
-    *   Wait for the process to complete. Each product is processed sequentially.
+    *   A progress bar will show overall status.
+    *   Below it, a live log will display real-time status for each product.
 5.  **Review Results:**
-    *   During the process, you can see individual product results in the live log.
-    *   Once all products are processed, summary messages (overall success, and lists of any warnings or errors) will be displayed at the top of the page.
-    *   Check the updated products on your store's front-end or back-end to review the AI-generated content.
-    *   Review OpenCart's error logs (System > Maintenance > Error Logs, look for "AI Updater:" entries) if you encounter issues.
+    *   Individual results appear in the live log.
+    *   Summary messages are shown at the top after completion.
+    *   Review OpenCart's error logs (System > Maintenance > Error Logs) for "AI Updater:" entries if issues occur.
 
 ## Logging
 
-*   The module logs detailed information about its operations, which can be helpful for troubleshooting.
-*   Logs are written to OpenCart's main system error log file (usually found in `system/storage/logs/`).
-*   Look for entries prefixed with `AI Updater:`
-    *   **API Requests/Responses:** Details of data sent to and received from the Openrouter API.
-    *   **Data Parsing:** Information about how the AI's response is parsed.
-    *   **Database Updates:** Confirmation of successful updates or issues encountered.
-    *   **Errors:** Any errors that occur during the process.
+*   Logs are written to OpenCart's main system error log file (`system/storage/logs/`).
+*   Look for entries prefixed with `AI Updater:`.
 
 ## Troubleshooting
 
-*   **"Openrouter API Key is missing" error:** Ensure you have entered a valid API key in the module settings and saved it. The module must be "Enabled" for the key to be actively used.
-*   **"Permission Denied" error:** Make sure your user group has access and modify permissions for `extension/module/ai_updater` (see Installation Step 4).
-*   **Products not updating / API errors:**
-    *   Check your Openrouter.ai account for any API key issues, usage limits, or billing problems.
-    *   Review the OpenCart error logs for specific error messages from the AI Updater module or the Openrouter API.
-    *   Ensure your server's cURL extension is working and can make outbound HTTPS requests.
-*   **SEO URLs not changing:** This feature updates SEO URLs when the product name is changed by the AI. Ensure the "Product Name" field is selected for update.
-
-## Future Enhancements (Optional)
-
-*   Option to choose different AI models from Openrouter.
-*   More granular control over SEO URL generation (e.g., per language).
-*   Directly update product images based on AI analysis or generation (if supported by API).
-*   Batch processing settings (e.g., number of products per batch, delay between batches).
+*   **"Openrouter API Key is missing" / "API Key is required" error:** Ensure a valid API key is saved in module settings and the module is enabled.
+*   **"Permission Denied" error:** Check user group permissions.
+*   **Menu link not appearing:** Ensure Modifications are refreshed after installing the `.ocmod.zip`.
+*   **Products not updating / API errors:** Check API key, Openrouter account, server cURL, and OpenCart error logs.
 
 ---
-
-This `README.md` provides a good starting point. It can be further improved with screenshots or more detailed examples as needed.
+Bu `README.md` dosyası, OCMOD kurulumunu ve genel kullanımı kapsar.

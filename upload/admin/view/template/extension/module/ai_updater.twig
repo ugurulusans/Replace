@@ -52,12 +52,12 @@
                     {% if error_api_key %}
                     <div class="text-danger">{{ error_api_key }}</div>
                     {% endif %}
-                     <small class="form-text text-muted">{{ help_api_key }}</small>
+                     <small class="help-block">{{ help_api_key }}</small> <!-- OC3 help-block -->
                 </div>
             </div>
              <div class="form-group">
-                <div class="col-sm-10 col-sm-offset-2">
-                    <button type="submit" form="form-module" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-success"><i class="fa fa-save"></i> {{ button_save_settings }}</button>
+                <div class="col-sm-10 col-sm-offset-2"> <!-- OC3 col-sm-offset-2 -->
+                    <button type="submit" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-success"><i class="fa fa-save"></i> {{ button_save }}</button>
                 </div>
             </div>
         </form>
@@ -73,24 +73,22 @@
                         <option value="meta_title">{{ text_field_meta_title }}</option>
                         <option value="meta_description">{{ text_field_meta_description }}</option>
                         <option value="meta_keyword">{{ text_field_meta_keyword }}</option>
-                        {# SEO URL eklenecekse: <option value="seo_url">{{ text_field_seo_url }}</option> #}
                     </select>
-                    <small class="form-text text-muted">{{ help_fields_to_update }}</small>
+                    <small class="help-block">{{ help_fields_to_update }}</small>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-2 control-label" for="input-manual-description">{{ entry_manual_description }}</label>
                 <div class="col-sm-10">
                     <textarea name="manual_description" rows="5" placeholder="{{ entry_manual_description }}" id="input-manual-description" class="form-control"></textarea>
-                    <small class="form-text text-muted">{{ help_manual_description }}</small>
+                    <small class="help-block">{{ help_manual_description }}</small>
                 </div>
             </div>
             <div class="form-group">
                  <label class="col-sm-2 control-label">{{ entry_products }}</label>
                  <div class="col-sm-10">
                     <input type="text" name="filter_name" value="" placeholder="{{ entry_filter_name }}" id="input-filter-name" class="form-control" />
-                    <div id="product-list" class="well well-sm" style="height: 250px; overflow: auto;">
-                        {# Ürünler AJAX ile buraya yüklenecek #}
+                    <div id="product-list" class="well well-sm" style="height: 250px; overflow: auto;"> <!-- OC3 well well-sm -->
                         {{ text_no_products_found }}
                     </div>
                  </div>
@@ -99,13 +97,12 @@
                 <div class="col-sm-10 col-sm-offset-2">
                      <div id="update-progress" style="display:none;">
                         <div class="progress">
-                            <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%">
-                                <span class="sr-only">0% Complete</span>
+                            <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%"> <!-- OC3 active -->
+                                <span class="sr-only">0% Complete</span> <!-- OC3 sr-only -->
                             </div>
                         </div>
                         <p id="progress-text">Processing...</p>
                         <div id="live-log-output" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 5px; margin-top: 10px; font-size: 12px; line-height: 1.4em; background-color: #f9f9f9; display: none;">
-                            <!-- Live logs will appear here -->
                         </div>
                     </div>
                 </div>
@@ -117,16 +114,14 @@
 </div>
 <script type="text/javascript"><!--
 $(document).ready(function() {
-    // API Key kaydetme butonu için form ID
-    $('#form-module button[type=\'submit\']').on('click', function() {
-        $('#form-module').attr('action', '{{ action_settings }}'); // Ensure correct action for settings save
-    });
+    // Ayar formu için action zaten form etiketinde belirtiliyor.
+    // Butonun type="submit" olması yeterli.
 
     // Ürünleri filtreleme ve listeleme
     function filterProducts() {
         var filter_name = $('input[name=\'filter_name\']').val();
         $.ajax({
-            url: 'index.php?route=extension/module/ai_updater/loadProducts&user_token={{ user_token }}',
+            url: 'index.php?route=extension/module/ai_updater/loadProducts&user_token={{ user_token }}', // OC3 user_token
             type: 'get',
             data: 'filter_name=' + encodeURIComponent(filter_name),
             dataType: 'json',
@@ -134,7 +129,7 @@ $(document).ready(function() {
                 var html = '';
                 if (json['products'] && json['products'].length) {
                     $.each(json['products'], function(i, product) {
-                        html += '<div class="checkbox">';
+                        html += '<div class="checkbox">'; // OC3 checkbox
                         html += '  <label><input type="checkbox" name="selected_products[]" value="' + product.product_id + '"> ' + product.name + '</label>';
                         html += '</div>';
                     });
@@ -152,7 +147,7 @@ $(document).ready(function() {
     $('input[name=\'filter_name\']').on('keyup', function() {
         filterProducts();
     });
-    filterProducts(); // Sayfa yüklendiğinde ürünleri listele
+    filterProducts();
 
     // Ürünleri Güncelle Butonu
     $('#button-update-products').on('click', function() {
@@ -173,7 +168,6 @@ $(document).ready(function() {
             return false;
         }
 
-        // Progress bar'ı göster
         $('#update-progress').show();
         var total_products = selected_products.length;
         var processed_products = 0;
@@ -183,67 +177,55 @@ $(document).ready(function() {
 
         $progressBar.removeClass('progress-bar-danger progress-bar-warning').css('width', '0%').attr('aria-valuenow', 0).text('0%');
         $progressText.text('{{ text_processing_product }} 0 / ' + total_products);
-        $liveLogOutput.html('').show(); // Clear previous logs and show the area
-
+        $liveLogOutput.html('').show();
 
         var overall_success_messages = [];
         var overall_error_messages = [];
         var overall_warning_messages = [];
-        var products_to_process = selected_products.slice(); // Orijinal diziyi korumak için kopyala
+        var products_to_process = selected_products.slice();
 
-        $('#button-update-products').button('loading');
-        $('.alert-dismissible').remove(); // Eski mesajları temizle
+        $(this).button('loading'); // $(this) butonu referans alır
+        $('.alert-dismissible').remove();
 
         function processNextProduct() {
             if (products_to_process.length === 0) {
-                // Tüm ürünler işlendi
                 $progressBar.css('width', '100%').attr('aria-valuenow', 100).text('100% {{ text_complete }}');
                 $progressText.text('{{ text_update_complete }} (' + processed_products + '/' + total_products + ')');
-                $('#button-update-products').button('reset');
+                $('#button-update-products').button('reset'); // Butonun adını doğru yazalım
 
-                // Genel sonuç mesajlarını göster
                 if (overall_error_messages.length > 0) {
                      $('#content > .container-fluid').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ text_completed_with_errors_summary }}<br>' + overall_error_messages.join('<br>') + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
                 }
                 if (overall_warning_messages.length > 0) {
                      $('#content > .container-fluid').prepend('<div class="alert alert-warning alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ text_completed_with_warnings_summary }}<br>' + overall_warning_messages.join('<br>') + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
                 }
-                if (overall_success_messages.length > 0 && overall_error_messages.length === 0 && overall_warning_messages.length === 0) { // Sadece başarı varsa
+                if (overall_success_messages.length > 0 && overall_error_messages.length === 0 && overall_warning_messages.length === 0) {
                     $('#content > .container-fluid').prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ text_all_products_updated_successfully }} ('+ total_products + '/' + total_products +') <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
-                } else if (overall_success_messages.length > 0) { // Kısmi başarı
+                } else if (overall_success_messages.length > 0) {
                      $('#content > .container-fluid').prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + overall_success_messages.length + ' {{ text_products_updated_successfully_summary }} <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
                 }
 
-
-                filterProducts(); // Ürün listesini yenile
+                filterProducts();
                 $('html, body').animate({ scrollTop: 0 }, 'slow');
-                // Don't hide progress immediately, let user see the final log output for a bit
-                // setTimeout(function() {
-                //     // $('#update-progress').hide(); // Keep it visible
-                //     // $progressBar.removeClass('progress-bar-danger progress-bar-warning').css('width', '0%').attr('aria-valuenow', 0).text('0%');
-                // }, 7000);
                 return;
             }
 
             var current_product_id = products_to_process.shift();
-            // var current_product_index = total_products - products_to_process.length - 1; // Not used currently
-
             var log_message_start = 'Product ID ' + current_product_id + ': ';
             $liveLogOutput.append('<p style="margin-bottom: 2px;">' + log_message_start + '{{ text_sending_data_to_ai_short }}</p>');
             $liveLogOutput.scrollTop($liveLogOutput[0].scrollHeight);
 
-
             $progressText.text('{{ text_processing_product }} ' + (processed_products + 1) + ' / ' + total_products + ' (ID: ' + current_product_id + ')');
 
             $.ajax({
-                url: '{{ action_update_products }}', // Bu URL'in tek bir ürünü işleyebilmesi gerekecek
+                url: '{{ action_update_products }}', // Controller'dan gelen doğru URL
                 type: 'post',
                 dataType: 'json',
                 data: {
-                    selected_products: [current_product_id], // Tek bir ürün ID'si gönderiyoruz
+                    selected_products: [current_product_id],
                     fields_to_update: fields_to_update,
                     manual_description: manual_description,
-                    user_token: '{{ user_token }}' // user_token'ı da gönderelim
+                    // user_token: '{{ user_token }}' // URL'de zaten var, tekrar göndermeye gerek yok
                 },
                 success: function(json) {
                     var log_entry = '';
@@ -254,7 +236,7 @@ $(document).ready(function() {
                     } else if (json['warning']) {
                         log_entry = '<span style="color: orange;">Warning: ' + json['warning'] + '</span>';
                         overall_warning_messages.push(log_message_start + json['warning']);
-                        // $progressBar.addClass('progress-bar-warning'); // Can make the bar look messy if many warnings
+                        $progressBar.addClass('progress-bar-warning');
                     } else if (json['success']) {
                         log_entry = '<span style="color: green;">' + json['success'] + '</span>';
                         overall_success_messages.push(json['success']);
@@ -262,7 +244,6 @@ $(document).ready(function() {
                         log_entry = '<span style="color: orange;">Notice: No specific status returned.</span>';
                          overall_warning_messages.push(log_message_start + 'No specific status returned.');
                     }
-                    // Update the last log entry for this product, or append a new one
                     $liveLogOutput.find('p:contains("' + log_message_start + '{{ text_sending_data_to_ai_short }}")').remove();
                     $liveLogOutput.append('<p style="margin-bottom: 2px;">' + log_message_start + log_entry + '</p>');
                     $liveLogOutput.scrollTop($liveLogOutput[0].scrollHeight);
@@ -279,16 +260,16 @@ $(document).ready(function() {
                     processed_products++;
                     var percentage = Math.round((processed_products / total_products) * 100);
                     $progressBar.css('width', percentage + '%').attr('aria-valuenow', percentage).text(percentage + '%');
-                    processNextProduct(); // Bir sonraki ürünü işle
+                    if (products_to_process.length > 0) {
+                        processNextProduct();
+                    } else { // All products processed, call the completion logic from the main loop
+                        processNextProduct(); // This will trigger the (products_to_process.length === 0) block
+                    }
                 }
             });
         }
-
-        processNextProduct(); // İlk ürünü işlemeye başla
+        processNextProduct();
     });
-
-    // Multi-select için (eğer Bootstrap Select veya Select2 gibi bir kütüphane kullanılıyorsa)
-    // $('#input-fields-to-update').selectpicker(); // Örnek
 });
 //--></script>
 {{ footer }}
