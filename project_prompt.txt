@@ -1,0 +1,82 @@
+Merhaba Jules,
+
+OpenCart 3.0.3.8 için "AI Ürün Güncelleme" adlı bir eklenti geliştirmeni istiyorum. Eklenti, OpenCart admin panelinden seçilen ürünlerin belirli alanlarını Openrouter AI kullanarak otomatik olarak güncelleyebilmeli.
+
+**Eklentinin Temel Özellikleri:**
+
+1.  **Admin Panel Arayüzü (`admin/view/template/extension/module/ai_updater.twig`):**
+    *   Bootstrap 3/4 uyumlu olmalı.
+    *   Modül ayarları için ayrı bir form alanı (API Key, Modül Durumu).
+    *   Ürün güncelleme işlemleri için ayrı bir bölüm.
+    *   **Alan Seçimi:** Güncellenecek ürün alanları (Ürün Adı, Açıklama, Meta Başlık, Meta Açıklama, Meta Anahtar Kelimeler) için çoklu seçim (multi-select) alanı.
+    *   **Manuel AI Talimatı:** AI'ya gönderilecek ek talimatlar için bir metin alanı (textarea).
+    *   **Ürün Seçimi:**
+        *   Ürünleri filtrelemek için bir metin girişi (product name filter).
+        *   Filtrelenen ürünlerin listelendiği ve checkbox ile seçilebildiği bir alan (AJAX ile yüklenecek).
+    *   **Güncelleme Butonu:** "Update Selected Products with AI" isimli bir buton.
+    *   **İlerleme Göstergesi:**
+        *   Güncelleme işlemi başladığında görünecek bir ilerleme çubuğu.
+        *   İşlenen toplam ürün sayısını ve mevcut işlenen ürünü gösteren bir metin (örn: "Processing product X / Y (ID: Z)").
+        *   **Canlı Log Çıktısı:** Her bir ürün işlendiğinde (API'ye gönderiliyor, başarı, hata, uyarı) anlık olarak durumunu gösteren, kaydırılabilir bir log alanı.
+
+2.  **Controller Mantığı (`admin/controller/extension/module/ai_updater.php`):**
+    *   Sınıf adı: `ControllerExtensionModuleAiUpdater`
+    *   **`index()` Metodu:**
+        *   Ayar sayfasını ve ürün güncelleme arayüzünü yükler.
+        *   Modül ayarlarını (`module_ai_updater_status`, `module_ai_updater_api_key`) kaydeder ve okur.
+        *   Gerekli dil dosyalarını, modelleri yükler.
+        *   View'e `user_token`, AJAX URL'leri (`action_update_products`, `loadProducts` için URL), `cancel` URL'i gibi değişkenleri gönderir.
+    *   **`validateForm()` Metodu:** Ayar formunun validasyonunu yapar (izinler, API key boş mu kontrolü).
+    *   **`loadProducts()` Metodu (AJAX):** Ürünleri isme göre filtreleyip JSON formatında döndürür.
+    *   **`updateProducts()` Metodu (AJAX):**
+        *   Formdan seçilen ürünleri (tek tek işlenecek), güncellenecek alanları ve manuel talimatları alır.
+        *   Openrouter API anahtarını config'den okur.
+        *   **Veritabanı Yedeği:** İşleme başlamadan önce `model_extension_module_ai_updater->backupDatabase()` metodunu çağırarak veritabanı yedeği alır.
+        *   Seçilen her bir ürün için:
+            *   Mevcut ürün bilgilerini (isim, açıklama, meta bilgileri) alır.
+            *   AI için bir prompt oluşturur (JSON formatında yanıt beklenmeli).
+            *   `OpenRouter` kütüphanesini kullanarak API'ye isteği gönderir.
+            *   API yanıtını `OpenRouter->parseProductUpdateResponse()` ile işler.
+            *   Parse edilen verilerle `model_extension_module_ai_updater->updateProduct()` metodunu çağırarak ürünü günceller.
+            *   İşlem sonucunu (başarı, hata, uyarı) JSON olarak döndürür (canlı log için).
+        *   Detaylı loglama yapar (`$this->log->write()`).
+    *   **`install()` Metodu:** Modül ayarlarını varsayılan değerlerle (`module_ai_updater_status = 0`) veritabanına ekler.
+    *   **`uninstall()` Metodu:** Modül ayarlarını veritabanından siler.
+
+3.  **Model Mantığı (`admin/model/extension/module/ai_updater.php`):**
+    *   Sınıf adı: `ModelExtensionModuleAiUpdater`
+    *   **`updateProduct()` Metodu:** Verilen ürün ID'si ve veri ile ürünün ilgili alanlarını (`product_description` tablosu) günceller. Eğer ürün adı değişirse, yeni bir SEO URL oluşturur (`seo_url` tablosu için, OC3 yapısına uygun, `language_id` olmadan tek keyword).
+    *   **`generateSeoKeyword()` Metodu:** Verilen metinden SEO dostu bir anahtar kelime üretir (Türkçe karakterleri dönüştürür, küçük harf yapar, özel karakterleri tire ile değiştirir).
+    *   **`makeKeywordUnique()` Metodu:** Oluşturulan SEO anahtar kelimesinin `seo_url` tablosunda benzersiz olmasını sağlar (çakışma varsa sonuna -2, -3 ekler).
+    *   **`getProducts()` Metodu:** Admin panelinde ürünleri filtrelemek ve listelemek için ürünleri çeker.
+    *   **`getTotalProducts()` Metodu:** Filtreye uygun toplam ürün sayısını döndürür.
+    *   **`backupDatabase()` Metodu:** Tüm veritabanı tablolarının bir SQL dump'ını `DIR_STORAGE . 'backup/dump_YYYY-MM-DD_HH-MM-SS.sql'` dosyasına alır.
+
+4.  **Dil Dosyası (`admin/language/en-gb/extension/module/ai_updater.php`):**
+    *   Modül adı (`heading_title`): "AI Ürün Güncelleme"
+    *   Menü linki metni (`text_ai_updater_menu`): "AI Ürün Güncelleme"
+    *   Tüm form etiketleri, buton metinleri, hata/başarı/uyarı mesajları, canlı log metinleri için girdiler.
+
+5.  **Kütüphane Dosyası (`system/library/openrouter.php`):**
+    *   Sınıf adı: `OpenRouter` (Namespace yok).
+    *   `__construct()`: API anahtarını alır.
+    *   `generateText()`: Openrouter API'sine cURL ile `/chat/completions` endpoint'ine istek gönderir, yanıtı alır.
+    *   `parseProductUpdateResponse()`: API'den gelen (tercihen JSON formatındaki) yanıtı işleyerek güncellenecek alanları bir diziye dönüştürür. JSON parse hatası veya eksik alan durumlarını ele alır.
+
+6.  **Kurulum Dosyası (`install.xml`):**
+    *   Eklenti adı: "AI Ürün Güncelleme"
+    *   Kod: `ai_updater`
+    *   Versiyon: `1.0.3` (veya uygun bir başlangıç versiyonu)
+    *   Yazar: Senin adın.
+    *   OpenCart 3.x `admin/controller/common/column_left.php` dosyasına, "Marketplace" menüsü altına eklenti sayfasına link ekleyen OCMOD operasyonunu içermeli.
+
+7.  **`README.md` Dosyası:**
+    *   Eklentinin kurulumu, yapılandırılması, kullanımı, özellikleri ve sorun giderme adımlarını içeren detaylı bir dokümantasyon.
+
+**Genel Beklentiler:**
+*   Kod, OpenCart 3.0.3.8 ile tam uyumlu olmalı.
+*   Güvenlik (SQL injection önlemleri, kullanıcı izinleri) dikkate alınmalı.
+*   Kod okunabilir ve anlaşılır olmalı.
+*   Tüm dosyalar, manuel olarak `.ocmod.zip` paketi oluşturulabilecek şekilde doğru bir `upload/` klasör yapısı içinde olmalı ve `install.xml` ile `README.md` kök dizinde yer almalı.
+
+Lütfen bu prompt'a göre projeyi sıfırdan oluşturmaya başla. İlk olarak çalışma alanını temizle (`reset_all()`).
