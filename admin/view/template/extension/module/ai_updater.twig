@@ -104,6 +104,9 @@
                             </div>
                         </div>
                         <p id="progress-text">Processing...</p>
+                        <div id="live-log-output" style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 5px; margin-top: 10px; font-size: 12px; line-height: 1.4em; background-color: #f9f9f9; display: none;">
+                            <!-- Live logs will appear here -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -176,9 +179,11 @@ $(document).ready(function() {
         var processed_products = 0;
         var $progressBar = $('#update-progress .progress-bar');
         var $progressText = $('#progress-text');
+        var $liveLogOutput = $('#live-log-output');
 
-        $progressBar.css('width', '0%').attr('aria-valuenow', 0).text('0%');
+        $progressBar.removeClass('progress-bar-danger progress-bar-warning').css('width', '0%').attr('aria-valuenow', 0).text('0%');
         $progressText.text('{{ text_processing_product }} 0 / ' + total_products);
+        $liveLogOutput.html('').show(); // Clear previous logs and show the area
 
 
         var overall_success_messages = [];
@@ -198,34 +203,35 @@ $(document).ready(function() {
 
                 // Genel sonuç mesajlarını göster
                 if (overall_error_messages.length > 0) {
-                     $('#content > .container-fluid').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + overall_error_messages.join('<br>') + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                     $('#content > .container-fluid').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ text_completed_with_errors_summary }}<br>' + overall_error_messages.join('<br>') + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
                 }
                 if (overall_warning_messages.length > 0) {
-                     $('#content > .container-fluid').prepend('<div class="alert alert-warning alert-dismissible"><i class="fa fa-exclamation-circle"></i> ' + overall_warning_messages.join('<br>') + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                     $('#content > .container-fluid').prepend('<div class="alert alert-warning alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ text_completed_with_warnings_summary }}<br>' + overall_warning_messages.join('<br>') + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
                 }
-                if (overall_success_messages.length > 0) {
-                    $('#content > .container-fluid').prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + overall_success_messages.join('<br>') + ' <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                if (overall_success_messages.length > 0 && overall_error_messages.length === 0 && overall_warning_messages.length === 0) { // Sadece başarı varsa
+                    $('#content > .container-fluid').prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ text_all_products_updated_successfully }} ('+ total_products + '/' + total_products +') <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
+                } else if (overall_success_messages.length > 0) { // Kısmi başarı
+                     $('#content > .container-fluid').prepend('<div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> ' + overall_success_messages.length + ' {{ text_products_updated_successfully_summary }} <button type="button" class="close" data-dismiss="alert">&times;</button></div>');
                 }
 
-                if (overall_success_messages.length > 0 && overall_error_messages.length === 0 && overall_warning_messages.length === 0) {
-                    // Sadece başarı varsa, genel bir başarı mesajı
-                } else if (overall_error_messages.length === total_products) {
-                    // Hepsi hata ise
-                } else {
-                    // Karışık sonuçlar varsa
-                }
 
                 filterProducts(); // Ürün listesini yenile
                 $('html, body').animate({ scrollTop: 0 }, 'slow');
-                setTimeout(function() {
-                    $('#update-progress').hide();
-                    $progressBar.removeClass('progress-bar-danger progress-bar-warning').css('width', '0%').attr('aria-valuenow', 0).text('0%');
-                }, 7000);
+                // Don't hide progress immediately, let user see the final log output for a bit
+                // setTimeout(function() {
+                //     // $('#update-progress').hide(); // Keep it visible
+                //     // $progressBar.removeClass('progress-bar-danger progress-bar-warning').css('width', '0%').attr('aria-valuenow', 0).text('0%');
+                // }, 7000);
                 return;
             }
 
             var current_product_id = products_to_process.shift();
-            var current_product_index = total_products - products_to_process.length - 1;
+            // var current_product_index = total_products - products_to_process.length - 1; // Not used currently
+
+            var log_message_start = 'Product ID ' + current_product_id + ': ';
+            $liveLogOutput.append('<p style="margin-bottom: 2px;">' + log_message_start + '{{ text_sending_data_to_ai_short }}</p>');
+            $liveLogOutput.scrollTop($liveLogOutput[0].scrollHeight);
+
 
             $progressText.text('{{ text_processing_product }} ' + (processed_products + 1) + ' / ' + total_products + ' (ID: ' + current_product_id + ')');
 
@@ -240,20 +246,33 @@ $(document).ready(function() {
                     user_token: '{{ user_token }}' // user_token'ı da gönderelim
                 },
                 success: function(json) {
+                    var log_entry = '';
                     if (json['error']) {
-                        overall_error_messages.push('Product ID ' + current_product_id + ': ' + json['error']);
+                        log_entry = '<span style="color: red;">Error: ' + json['error'] + '</span>';
+                        overall_error_messages.push(log_message_start + json['error']);
                         $progressBar.addClass('progress-bar-danger');
+                    } else if (json['warning']) {
+                        log_entry = '<span style="color: orange;">Warning: ' + json['warning'] + '</span>';
+                        overall_warning_messages.push(log_message_start + json['warning']);
+                        // $progressBar.addClass('progress-bar-warning'); // Can make the bar look messy if many warnings
+                    } else if (json['success']) {
+                        log_entry = '<span style="color: green;">' + json['success'] + '</span>';
+                        overall_success_messages.push(json['success']);
+                    } else {
+                        log_entry = '<span style="color: orange;">Notice: No specific status returned.</span>';
+                         overall_warning_messages.push(log_message_start + 'No specific status returned.');
                     }
-                    if (json['warning']) {
-                        overall_warning_messages.push('Product ID ' + current_product_id + ': ' + json['warning']);
-                        $progressBar.addClass('progress-bar-warning');
-                    }
-                    if (json['success']) { // Controller'dan gelen success mesajı, o ürün için olan mesaj olmalı
-                        overall_success_messages.push(json['success']); // Örneğin: "Product ID X updated successfully."
-                    }
+                    // Update the last log entry for this product, or append a new one
+                    $liveLogOutput.find('p:contains("' + log_message_start + '{{ text_sending_data_to_ai_short }}")').remove();
+                    $liveLogOutput.append('<p style="margin-bottom: 2px;">' + log_message_start + log_entry + '</p>');
+                    $liveLogOutput.scrollTop($liveLogOutput[0].scrollHeight);
                 },
                 error: function(xhr, ajaxOptions, thrownError) {
-                    overall_error_messages.push('Product ID ' + current_product_id + ': Request Failed - ' + thrownError + " " + xhr.statusText);
+                    var error_msg = 'Request Failed - ' + thrownError + " " + xhr.statusText;
+                    $liveLogOutput.find('p:contains("' + log_message_start + '{{ text_sending_data_to_ai_short }}")').remove();
+                    $liveLogOutput.append('<p style="margin-bottom: 2px;"><span style="color: red;">' + log_message_start + error_msg + '</span></p>');
+                    $liveLogOutput.scrollTop($liveLogOutput[0].scrollHeight);
+                    overall_error_messages.push(log_message_start + error_msg);
                     $progressBar.addClass('progress-bar-danger');
                 },
                 complete: function() {

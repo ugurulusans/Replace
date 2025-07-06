@@ -20,9 +20,14 @@ $_['text_no_products_updated'] = 'Warning: No products were updated. This might 
 $_['text_product_updated_success_single'] = 'Product ID %s: Content successfully generated and updated.'; // For single product success in progress
 $_['text_processing_product'] = 'Processing product';
 $_['text_sending_data_to_ai'] = 'Sending data to AI...';
+$_['text_sending_data_to_ai_short']    = 'Sending to AI...'; // Shorter version for live log
 $_['text_update_complete'] = 'Update process complete.';
 $_['text_complete'] = 'Complete';
 $_['text_error_occurred'] = 'An error occurred.';
+$_['text_completed_with_errors_summary'] = 'Process completed with errors:';
+$_['text_completed_with_warnings_summary'] = 'Process completed with warnings:';
+$_['text_all_products_updated_successfully'] = 'All products processed successfully!';
+$_['text_products_updated_successfully_summary'] = 'products processed successfully.'; // Used like "X products processed successfully"
 
 
 // Tab
